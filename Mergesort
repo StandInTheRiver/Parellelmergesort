@@ -1,0 +1,164 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+using System.Diagnostics;
+using System.Threading;
+
+
+//by stephen dybka
+//write up
+//
+//I found a tutorial online from "w3 resources" that details a merge sort method in C# for integers. I rewrote the code to work with string lists instead of integer lists
+//My first attempt was using an array, however array syntax was wonky and I also noted that arrays are fixed size, so using recursion where the arrays get smaller each time 
+//did not make sense since the arrays would be changing with each function call during the recursion. I felt that this would be an improper use of an array
+//Lists work much better because they can be any size
+//I found this project difficult because I have not taken the data structures and algorithms course and I have never done recursive code before now
+//However I think i've learned more than I would have 
+//
+//my code below has notes for each line detailing what i understand it to be doing
+//
+//I found that running the code seqentially on my pc using a 4.0Ghz Intel i7 4 cores hyper threaded for 8 logical cores total that the sequential code executed on average "111" milliseconds
+//ensure that the names file is located in the same directory as the code in order for the import to work
+//running the code with a max of 8 threads I found that the code ran on average to be "78" milliseconds
+//
+//any increase beyond 8 threads caused overhead to slow down the code substaintially beyond the serial time to around "150" milliseconds. This is due to the short list. If the names in the list were around a million or so i think more threads would increase the speed as per gustavs law
+//
+//To test running the code sequentially there are some comments in the code at line 90, uncomment the comment block to turn off parrellel and uncomment out the lines to run it sequentially
+// to see the results of the console window put a break on line 65
+
+
+namespace ConsoleApp2
+{
+    class Program
+    {
+
+        
+        static void Main(string[] args)
+        {                 
+            string[] lines = File.ReadAllLines("names.txt");//reads the file
+            string[] lines2 = lines.Select(s => s.ToLowerInvariant()).ToArray();//turns the file to lowercase
+            List<string> unsorted = new List<string>(); //creates new list called unsorted
+            List<string> sorted; //creates new list called sorted
+            
+            for (int i = 0; i < lines2.Length; i++) //puts each item in the array into the list unsorted
+            {
+                unsorted.Add(lines2[i]);
+            }
+
+            int threadcount = 0;
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            sorted = Mergesort(unsorted, threadcount);//runs Mergesort function passing the unsorted list 
+            stopwatch.Stop();
+
+            Console.WriteLine(" blah blah"); //for diagnostics purposes
+                     
+            foreach (string x in sorted) //writes the names out to the console to determine if its working correctly
+            {
+                Console.Write(x);
+                Console.Write("\n");
+            }
+
+            Console.WriteLine(" Code too {0} milliseconds to execute", stopwatch.ElapsedMilliseconds);
+            Console.WriteLine("yes"); //put a break here to see the results of the code in teh console window
+        }
+
+        private static List<string> Mergesort(List<string> unsorted, int threadcount)
+        {
+            if (unsorted.Count <= 1) //base case, once unsorted = 1 everything is sorted
+                return unsorted; //stops the function and allows it to return
+
+            
+
+            List<string> left = new List<string>(); //creates new list called left
+            List<string> right = new List<string>(); //creates new list called right
+
+            int middle = unsorted.Count / 2; // int measuring half of unsorted
+
+            for (int i = 0; i < middle; i++) //adds the current iteration (name) to the left list
+            {
+                left.Add(unsorted[i]);
+            }
+
+            for (int i = middle; i < unsorted.Count; i++) //adds the current iteration (name) to the right list
+            {
+                right.Add(unsorted[i]);
+            }
+
+            //uncomment the comment block to turn off parrellel
+           //  /*
+            if (threadcount > 8) //if more than 8 threads are running, don't start new threads
+            {
+                left = Mergesort(left, threadcount); //calls the function mergesort with the left list as the starting list
+                right = Mergesort(right, threadcount); //calls the function mergesort with the right list as the starting list
+            }
+            else //if less than 8 threads are running, start new threads
+            {
+                Parallel.Invoke(() => left = Mergesort(left, threadcount + 1),
+                                () => right = Mergesort(right, threadcount + 1));
+            }
+
+           // */ 
+            //uncomment here to run sequentially
+           // left = Mergesort(left, threadcount); //calls the function mergesort with the left list as the starting list
+           // right = Mergesort(right, threadcount); //calls the function mergesort with the right list as the starting list
+            return Merge(left, right); //when its finished, runs the next function to do the merging passing left and right for each function
+        }
+
+        private static List<string> Merge(List<string> left, List<string> right)
+        {
+            List<string> result = new List<string>(); //create new list called result
+
+            while (left.Count > 0 || right.Count > 0) //while the left or right lists have items in them
+            {
+                if (left.Count > 0 && right.Count > 0) //if both the left and right have items in them
+                {
+                    var name1 = left[0].Split(' '); //create new variable, split the first and last name for the left
+                    var name2 = right[0].Split(' '); //create new variable, split the first and last name for the left
+
+                    if ((string.Compare(name1[1], name2[1]) == -1) ) //if the last name of left is first
+                    {
+                        result.Add(left.First()); //add the first item in the left list to result
+                        left.Remove(left.First()); //remove the first item in the left list (there is only one item, so it delets the list)
+                    }
+
+                    if ((string.Compare(name1[1], name2[1]) == 1)) //if the last name of right is first
+                    {
+                        result.Add(right.First()); //add the first item in the right list to result
+                        right.Remove(right.First()); //delete the first item in the right list (only one item in the list so it deletes it basically)
+                    }
+
+                    else if ((string.Compare(name1[1], name2[1]) == 0)) // if the last names are the same
+                    {
+                        if ((string.Compare(name1[0], name2[0]) == -1))// if the first name of the left list is first
+                        {
+                            result.Add(left.First()); //add the first item in the list from the left list to result
+                            left.Remove(left.First()); //removes the item from the left list
+                        }
+
+                        else // if the compare returns 1 meaning the right name is first, or the name has the same last and first name
+                        {
+                            result.Add(right.First()); //add the first item from the right list to the result
+                            right.Remove(right.First()); // remove the item from the right list (making it empty)
+                        }
+                    }                   
+                }
+
+                else if (left.Count > 0) //triggers if one of the lists is empty and the other isnt
+                {
+                    result.Add(left.First()); //adds the non-empty list to the result, meaning, this name comes after the other name
+                    left.Remove(left.First()); //removes the list making it empty
+                }
+
+                else if (right.Count > 0) //triggers if one of the lists is empty and the other isnt
+                {
+                    result.Add(right.First()); //adds the non-empty list to the result, meaning, this name comes after the other name
+                    right.Remove(right.First()); //removes the list making it empty
+                }
+            }
+            return result; //returns the result
+        }
+    }
+}
